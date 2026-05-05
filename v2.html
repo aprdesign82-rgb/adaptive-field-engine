@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Adaptive Field Engine</title>
+<style>
+body { margin:0; background:#05070a; }
+canvas { width:100vw; height:100vh; display:block; }
+</style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+
+<script>
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
+
+let w, h;
+function resize(){
+  w = canvas.width = window.innerWidth;
+  h = canvas.height = window.innerHeight;
+}
+resize();
+window.onresize = resize;
+
+const N = 500;
+let particles = [];
+
+const G = 60;
+let memory = new Float32Array(G*G);
+
+function idx(x,y){ return ((y+G)%G)*G + ((x+G)%G); }
+
+function reset(){
+  particles = [];
+  for(let i=0;i<N;i++){
+    particles.push({
+      x: Math.random(),
+      y: Math.random(),
+      vx:0,
+      vy:0
+    });
+  }
+  memory.fill(0);
+}
+
+function sample(x,y){
+  let gx = x*G, gy = y*G;
+  let x0 = Math.floor(gx), y0 = Math.floor(gy);
+  return memory[idx(x0,y0)];
+}
+
+function field(x,y,t){
+  let dx = x-0.5;
+  let dy = y-0.5;
+
+  let base = {
+    x: -dy*0.6 + Math.sin(y*10+t*0.02)*0.2,
+    y:  dx*0.6 + Math.cos(x*10-t*0.02)*0.2
+  };
+
+  let m = sample(x,y);
+
+  return {
+    x: base.x + m*0.5,
+    y: base.y + m*0.5
+  };
+}
+
+let t = 0;
+
+function step(){
+  ctx.fillStyle = "rgba(0,0,0,0.05)";
+  ctx.fillRect(0,0,w,h);
+
+  for(let p of particles){
+
+    let f = field(p.x,p.y,t);
+
+    p.vx = f.x;
+    p.vy = f.y;
+
+    p.x += p.vx*0.01;
+    p.y += p.vy*0.01;
+
+    if(p.x<0)p.x+=1;
+    if(p.x>1)p.x-=1;
+    if(p.y<0)p.y+=1;
+    if(p.y>1)p.y-=1;
+
+    let gx = Math.floor(p.x*G);
+    let gy = Math.floor(p.y*G);
+    memory[idx(gx,gy)] += 0.02;
+
+    ctx.strokeStyle = "rgba(0,255,150,0.6)";
+    ctx.beginPath();
+    ctx.moveTo(p.x*w, p.y*h);
+    ctx.lineTo((p.x-p.vx*0.5)*w, (p.y-p.vy*0.5)*h);
+    ctx.stroke();
+  }
+
+  t++;
+  requestAnimationFrame(step);
+}
+
+canvas.onclick = reset;
+
+reset();
+step();
+</script>
+
+</body>
+</html>
